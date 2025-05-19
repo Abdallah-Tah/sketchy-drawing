@@ -1,5 +1,5 @@
 <div>
-    <div class="min-h-screen bg-gray-50" wire:ignore x-data="sketchBoard($wire)">
+    <div class="min-h-screen bg-gray-100" wire:ignore x-data="sketchBoard($wire)">
         <!-- Toolbar -->
         <div class="fixed top-0 left-0 right-0 bg-white shadow-md z-10 px-4 py-3">
             <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
@@ -71,11 +71,15 @@
             </div>
         @endif
 
-        <div class="pt-20 px-8">
-            <canvas x-ref="canvas" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing"
-                @mouseleave="stopDrawing" @touchstart.prevent="startDrawing" @touchmove.prevent="draw"
-                @touchend.prevent="stopDrawing" class="mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
-            </canvas>
+        <!-- Canvas Container -->
+        <div class="pt-20 px-4 pb-4 flex justify-center items-center min-h-screen">
+            <div class="w-full max-w-5xl bg-white rounded-xl shadow-lg p-4">
+                <canvas x-ref="canvas" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing"
+                    @mouseleave="stopDrawing" @touchstart.prevent="startDrawing" @touchmove.prevent="draw"
+                    @touchend.prevent="stopDrawing"
+                    class="w-full aspect-[4/3] bg-white rounded-lg border-2 border-gray-200 cursor-crosshair">
+                </canvas>
+            </div>
         </div>
     </div>
 
@@ -102,25 +106,26 @@
                 },
 
                 setCanvasSize(maintainContent = false) {
-                    const toolbarHeight = 80
-                    const padding = 32
+                    const containerWidth = this.canvas.parentElement.clientWidth -
+                    32; // Account for padding
+                    const containerHeight = (containerWidth * 3) / 4; // Maintain 4:3 aspect ratio
 
-                    let tempCanvas
+                    let tempCanvas;
                     if (maintainContent) {
-                        tempCanvas = document.createElement('canvas')
-                        tempCanvas.width = this.canvas.width
-                        tempCanvas.height = this.canvas.height
-                        const tempCtx = tempCanvas.getContext('2d')
-                        tempCtx.drawImage(this.canvas, 0, 0)
+                        tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = this.canvas.width;
+                        tempCanvas.height = this.canvas.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCtx.drawImage(this.canvas, 0, 0);
                     }
 
-                    this.canvas.width = window.innerWidth - (padding * 2)
-                    this.canvas.height = window.innerHeight - toolbarHeight - padding
+                    this.canvas.width = containerWidth;
+                    this.canvas.height = containerHeight;
 
-                    if (maintainContent) {
-                        this.ctx.drawImage(tempCanvas, 0, 0)
+                    if (maintainContent && tempCanvas) {
+                        this.ctx.drawImage(tempCanvas, 0, 0, containerWidth, containerHeight);
                     } else {
-                        this.clearCanvas()
+                        this.clearCanvas();
                     }
                 },
 
