@@ -1,0 +1,21 @@
+{
+  "name": "sketch-board",
+  "version": "1.0.0",
+  "description": "A children's sketch board application using Livewire and Alpine.js.",
+  "main": "resources/js/app.js",
+  "scripts": {
+    "dev": "npm run development",
+    "development": "vite",
+    "build": "npm run production",
+    "production": "vite build"
+  },
+  "dependencies": {
+    "alpinejs": "^3.0.0",
+    "laravel-vite-plugin": "^0.5.0",
+    "livewire": "^2.0"
+  },
+  "devDependencies": {
+    "vite": "^2.0.0"
+  },
+  "license": "MIT"
+}
