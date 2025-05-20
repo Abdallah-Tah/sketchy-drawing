@@ -9,11 +9,11 @@ if (googleServicesJson.exists()) {
 }
 
 android {
-    namespace = "com.sketchy.drawing"
+    namespace = "com.sketch.drawing"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.sketchy.drawing"
+        applicationId = "com.sketch.drawing"
         minSdk = 28
         targetSdk = 34
         versionCode = 1

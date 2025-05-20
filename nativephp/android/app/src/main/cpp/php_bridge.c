@@ -532,7 +532,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
 
     // Register native methods for PHPBridge
-    jclass phpBridgeClass = (*env)->FindClass(env, "com/sketchy/drawing/bridge/PHPBridge");
+    jclass phpBridgeClass = (*env)->FindClass(env, "com/sketch/drawing/bridge/PHPBridge");
     if (phpBridgeClass == NULL) {
         return JNI_ERR;
     }
@@ -542,7 +542,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
 
     // Register native methods for LaravelEnvironment
-    jclass laravelEnvClass = (*env)->FindClass(env, "com/sketchy/drawing/bridge/LaravelEnvironment");
+    jclass laravelEnvClass = (*env)->FindClass(env, "com/sketch/drawing/bridge/LaravelEnvironment");
     if (laravelEnvClass == NULL) {
         return JNI_ERR;
     }
