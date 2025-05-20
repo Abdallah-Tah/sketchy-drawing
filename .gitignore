@@ -21,3 +21,9 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+**/ms-dotnettools.vscode-dotnet-runtime/
+**/globalStorage/
+/nativephp/
+
+
+

@@ -1,6 +1,7 @@
 <div>
     <!-- Adding viewport meta tag -->
-    <div class="min-h-screen bg-gray-100" wire:ignore x-data="sketchBoard($wire)">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <div class="min-h-screen bg-white" wire:ignore x-data="sketchBoard($wire)">
         <!-- Mobile-friendly Toolbar -->
         <div class="fixed top-0 left-0 right-0 bg-white shadow-md z-10">
             <!-- Color and Size Controls -->
@@ -66,6 +67,21 @@
                             </svg>
                             <span class="text-xs sm:text-sm">Save</span>
                         </button>
+
+                        <button @click="toggleFullScreen"
+                            class="p-2 sm:p-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all flex items-center space-x-1 sm:space-x-2">
+                            <svg x-show="!isFullScreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                            </svg>
+                            <svg x-show="isFullScreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 4v3m0 0h3M9 7H6m13 0h-3m0 0v-3m0 0h3M6 17v-3m0 0h3m-3 0v3m0 0h3m8-3v3m0 0h3m-3 0v-3m0 0h3" />
+                            </svg>
+                            <span class="text-xs sm:text-sm" x-text="isFullScreen ? 'Exit Full' : 'Full Screen'"></span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -78,13 +94,13 @@
             </div>
         @endif
 
-        <!-- Canvas Container - Adjust top padding to account for smaller toolbar on mobile -->
-        <div class="pt-[110px] sm:pt-[132px] px-1 sm:px-2 pb-2 flex justify-center items-center min-h-screen">
-            <div class="w-full max-w-5xl bg-white rounded-xl shadow-lg p-1 sm:p-2 md:p-4">
+        <!-- Full Page Canvas Container -->
+        <div id="canvasContainer" class="fixed inset-0 bg-white" :class="{ 'z-40': isFullScreen }">
+            <div class="absolute inset-0 mt-[110px] sm:mt-[132px]">
                 <canvas x-ref="canvas" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing"
                     @mouseleave="stopDrawing" @touchstart.prevent="startDrawing($event)"
-                    @touchmove.prevent="draw($event)" @touchend.prevent="stopDrawing" @touchcancel.prevent="stopDrawing"
-                    class="w-full aspect-[4/3] bg-white rounded-lg border-2 border-gray-200 touch-none">
+                    @touchmove.prevent="draw($event)" @touchend.prevent="stopDrawing"
+                    @touchcancel.prevent="stopDrawing" class="w-full h-full touch-none select-none">
                 </canvas>
             </div>
         </div>
@@ -94,29 +110,90 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('sketchBoard', ($wire) => ({
                 isDrawing: false,
+                isFullScreen: false,
                 canvas: null,
                 ctx: null,
                 wire: $wire,
-                lastX: 0,
-                lastY: 0,
+                points: [],
+                maxPoints: 5,
+                lastTime: 0,
+                throttleDelay: 8, // Reduced for smoother lines
+                pressure: 1,
+                tilt: {
+                    x: 0,
+                    y: 0
+                },
+                drawHistory: [],
+                maxHistorySteps: 50,
 
                 init() {
                     this.canvas = this.$refs.canvas;
-                    this.ctx = this.canvas.getContext('2d');
+                    this.ctx = this.canvas.getContext('2d', {
+                        willReadFrequently: true
+                    });
+                    this.setupContext();
+                    this.setupEventListeners();
+                    this.setCanvasSize();
+                    this.clearCanvas();
+                },
+
+                setupContext() {
                     this.ctx.lineCap = 'round';
                     this.ctx.lineJoin = 'round';
+                    this.ctx.imageSmoothingEnabled = true;
+                    this.ctx.imageSmoothingQuality = 'high';
+                },
 
-                    // Prevent scrolling while drawing
-                    this.canvas.addEventListener('touchstart', (e) => {
+                setupEventListeners() {
+                    const preventDefaults = (e) => {
                         e.preventDefault();
-                    }, {
+                        e.stopPropagation();
+                    };
+
+                    const options = {
                         passive: false
+                    };
+
+                    ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(eventName => {
+                        this.canvas.addEventListener(eventName, preventDefaults, options);
                     });
 
-                    this.canvas.addEventListener('touchmove', (e) => {
-                        e.preventDefault();
-                    }, {
-                        passive: false
+                    // Handle pressure sensitivity
+                    this.canvas.addEventListener('pointerdown', (e) => {
+                        this.pressure = e.pressure !== 0 ? e.pressure : 0.5;
+                        this.tilt = {
+                            x: e.tiltX,
+                            y: e.tiltY
+                        };
+                    });
+
+                    this.canvas.addEventListener('pointermove', (e) => {
+                        this.pressure = e.pressure !== 0 ? e.pressure : 0.5;
+                        this.tilt = {
+                            x: e.tiltX,
+                            y: e.tiltY
+                        };
+                    });
+
+                    // Undo/Redo support
+                    window.addEventListener('keydown', (e) => {
+                        if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+                            this.undo();
+                        }
+                    });
+
+                    // Auto-save current state periodically
+                    setInterval(() => this.saveState(), 5000);
+
+                    // Prevent double-tap zoom
+                    let lastTap = 0;
+                    this.canvas.addEventListener('touchend', (e) => {
+                        const currentTime = new Date().getTime();
+                        const tapLength = currentTime - lastTap;
+                        if (tapLength < 500 && tapLength > 0) {
+                            preventDefaults(e);
+                        }
+                        lastTap = currentTime;
                     });
 
                     this.setCanvasSize();
@@ -131,12 +208,60 @@
                     });
 
                     this.clearCanvas();
+
+                    // Handle fullscreen changes
+                    document.addEventListener('fullscreenchange', () => {
+                        if (!document.fullscreenElement) {
+                            this.isFullScreen = false;
+                            setTimeout(() => this.setCanvasSize(true), 100);
+                        }
+                    });
+                },
+
+                saveState() {
+                    const imageData = this.canvas.toDataURL();
+                    this.drawHistory.push(imageData);
+                    if (this.drawHistory.length > this.maxHistorySteps) {
+                        this.drawHistory.shift();
+                    }
+                },
+
+                undo() {
+                    if (this.drawHistory.length > 0) {
+                        const previousState = this.drawHistory.pop();
+                        const img = new Image();
+                        img.onload = () => {
+                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                            this.ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = previousState;
+                    }
+                },
+
+                async toggleFullScreen() {
+                    const container = document.getElementById('canvasContainer');
+
+                    if (!document.fullscreenElement) {
+                        try {
+                            await container.requestFullscreen();
+                            this.isFullScreen = true;
+                            setTimeout(() => this.setCanvasSize(true), 100);
+                        } catch (err) {
+                            console.error('Error attempting to enable full-screen mode:', err
+                                .message);
+                        }
+                    } else {
+                        document.exitFullscreen();
+                        this.isFullScreen = false;
+                        setTimeout(() => this.setCanvasSize(true), 100);
+                    }
                 },
 
                 setCanvasSize(maintainContent = false) {
-                    const containerWidth = this.canvas.parentElement.clientWidth -
-                        (window.innerWidth < 640 ? 8 : 16); // Less padding on mobile
-                    const containerHeight = (containerWidth * 3) / 4; // Maintain 4:3 aspect ratio
+                    const container = this.canvas.parentElement;
+                    const toolbarHeight = window.innerWidth < 640 ? 110 : 132;
+                    let containerWidth = container.clientWidth;
+                    let containerHeight = window.innerHeight - toolbarHeight;
 
                     let tempCanvas;
                     if (maintainContent) {
@@ -147,9 +272,11 @@
                         tempCtx.drawImage(this.canvas, 0, 0);
                     }
 
+                    // Set canvas size to match container
                     this.canvas.width = containerWidth;
                     this.canvas.height = containerHeight;
 
+                    // Restore content if needed
                     if (maintainContent && tempCanvas) {
                         this.ctx.drawImage(tempCanvas, 0, 0, containerWidth, containerHeight);
                     } else {
@@ -157,8 +284,7 @@
                     }
 
                     // Reset context properties after resize
-                    this.ctx.lineCap = 'round';
-                    this.ctx.lineJoin = 'round';
+                    this.setupContext();
                 },
 
                 clearCanvas() {
@@ -170,46 +296,86 @@
 
                 startDrawing(e) {
                     this.isDrawing = true;
+                    this.points = [];
                     const pos = this.getPos(e);
-                    this.lastX = pos.x;
-                    this.lastY = pos.y;
+                    this.addPoint(pos.x, pos.y);
                     this.ctx.beginPath();
                     this.ctx.moveTo(pos.x, pos.y);
+                },
+
+                addPoint(x, y) {
+                    this.points.push({
+                        x,
+                        y,
+                        pressure: this.pressure
+                    });
+                    if (this.points.length > this.maxPoints) {
+                        this.points.shift();
+                    }
                 },
 
                 draw(e) {
                     if (!this.isDrawing) return;
 
+                    const currentTime = Date.now();
+                    if (currentTime - this.lastTime < this.throttleDelay) return;
+                    this.lastTime = currentTime;
+
                     const pos = this.getPos(e);
+                    this.addPoint(pos.x, pos.y);
 
-                    // Smoothing for mobile touch events
-                    const dx = pos.x - this.lastX;
-                    const dy = pos.y - this.lastY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (this.points.length < 2) return;
 
-                    if (dist > 0) {
-                        // Create multiple points for smoother lines
-                        const steps = Math.max(1, Math.floor(dist / 2));
-                        for (let i = 0; i < steps; i++) {
-                            const x = this.lastX + (dx * i) / steps;
-                            const y = this.lastY + (dy * i) / steps;
-                            this.ctx.lineTo(x, y);
-                            this.ctx.stroke();
+                    this.ctx.strokeStyle = this.wire.isEraser ? 'white' : this.wire.currentColor;
+
+                    // Adjust line width based on pressure and brush size
+                    const pressureWidth = this.wire.brushSize * (this.pressure * 1.5);
+                    this.ctx.lineWidth = Math.max(1, pressureWidth);
+
+                    this.ctx.beginPath();
+
+                    if (this.points.length === 2) {
+                        // Draw straight line for two points
+                        this.ctx.moveTo(this.points[0].x, this.points[0].y);
+                        this.ctx.lineTo(this.points[1].x, this.points[1].y);
+                    } else {
+                        // Draw smooth curve through points
+                        this.ctx.moveTo(this.points[0].x, this.points[0].y);
+
+                        for (let i = 1; i < this.points.length - 2; i++) {
+                            const xc = (this.points[i].x + this.points[i + 1].x) / 2;
+                            const yc = (this.points[i].y + this.points[i + 1].y) / 2;
+                            const pressure = (this.points[i].pressure + this.points[i + 1].pressure) /
+                                2;
+
+                            this.ctx.quadraticCurveTo(
+                                this.points[i].x,
+                                this.points[i].y,
+                                xc,
+                                yc
+                            );
                         }
 
-                        this.ctx.strokeStyle = this.wire.isEraser ? 'white' : this.wire.currentColor;
-                        this.ctx.lineWidth = this.wire.brushSize;
-                        this.ctx.lineTo(pos.x, pos.y);
-                        this.ctx.stroke();
-
-                        this.lastX = pos.x;
-                        this.lastY = pos.y;
+                        // Curve through the last two points
+                        const lastPoint = this.points[this.points.length - 1];
+                        this.ctx.quadraticCurveTo(
+                            this.points[this.points.length - 2].x,
+                            this.points[this.points.length - 2].y,
+                            lastPoint.x,
+                            lastPoint.y
+                        );
                     }
+
+                    this.ctx.stroke();
                 },
 
                 stopDrawing() {
-                    this.isDrawing = false;
-                    this.ctx.beginPath(); // Reset the path
+                    if (this.isDrawing) {
+                        this.isDrawing = false;
+                        this.ctx.beginPath();
+                        this.saveState();
+                    }
+                    this.points = [];
                 },
 
                 getPos(e) {
@@ -223,16 +389,19 @@
                         clientY = e.touches[0].clientY;
                     } else {
                         // Mouse event
-                        clientX = e.clientX || e.pageX;
-                        clientY = e.clientY || e.pageY;
+                        clientX = e.clientX;
+                        clientY = e.clientY;
                     }
 
-                    const x = clientX - rect.left;
-                    const y = clientY - rect.top;
+                    // Get the pixel ratio for high DPI screens
+                    const ratio = window.devicePixelRatio || 1;
+
+                    const x = (clientX - rect.left) * (this.canvas.width / rect.width);
+                    const y = (clientY - rect.top) * (this.canvas.height / rect.height);
 
                     return {
-                        x: x * (this.canvas.width / rect.width),
-                        y: y * (this.canvas.height / rect.height)
+                        x,
+                        y
                     };
                 },
 
