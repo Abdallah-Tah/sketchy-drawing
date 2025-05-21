@@ -45,6 +45,26 @@
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
     }
+
+    html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* To prevent scrollbars if something overflows slightly */
+    }
+
+    /* Attempt to target a common main application wrapper if it exists.
+       If #app is not the ID, this rule might not apply, which is fine.
+       Alternatively, if a class is used, that could be targeted. */
+    body > div:first-child, /* Common for React/Vue apps, might apply to Livewire's root */
+    body > main:first-child,
+    #app { /* A common ID for the main app container in Laravel projects */
+        height: 100% !important; /* Use !important to increase specificity */
+        width: 100% !important;
+        display: flex; /* Optional: if the immediate child needs to flex-grow */
+        flex-direction: column; /* Optional: if the immediate child needs to flex-grow */
+    }
 }
 
 [data-flux-field]:not(ui-radio, ui-checkbox) {

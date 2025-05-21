@@ -305,13 +305,19 @@
                 },
 
                 setCanvasSize(maintainContent = false) {
-                    const container = this.canvas.parentElement;
-                    const toolbarHeight = window.innerWidth < 640 ? 110 : 132; // This line is no longer directly used for height calculation but might be useful for other logic if the toolbar's height is needed.
-                    let containerWidth = container.clientWidth;
-                    let containerHeight = container.clientHeight; // Changed to use the container's clientHeight
+                    const container = this.canvas.parentElement; // This is canvasContainer
+                    
+                    // Use documentElement.clientHeight for a more reliable full screen height
+                    const availableHeight = document.documentElement.clientHeight;
+                    // Use clientWidth of the container, assuming it's already spanning full width (e.g., due to fixed inset-0 or h-screen)
+                    const availableWidth = container.clientWidth; 
+
+                    // Explicitly set the container's dimensions
+                    container.style.height = availableHeight + 'px';
+                    container.style.width = availableWidth + 'px';
 
                     let tempCanvas;
-                    if (maintainContent) {
+                    if (maintainContent && this.canvas.width > 0 && this.canvas.height > 0) { // Check if canvas has dimensions
                         tempCanvas = document.createElement('canvas');
                         tempCanvas.width = this.canvas.width;
                         tempCanvas.height = this.canvas.height;
@@ -319,19 +325,20 @@
                         tempCtx.drawImage(this.canvas, 0, 0);
                     }
 
-                    // Set canvas size to match container
-                    this.canvas.width = containerWidth;
-                    this.canvas.height = containerHeight;
+                    this.canvas.width = availableWidth;
+                    this.canvas.height = availableHeight;
 
-                    // Restore content if needed
                     if (maintainContent && tempCanvas) {
-                        this.ctx.drawImage(tempCanvas, 0, 0, containerWidth, containerHeight);
+                        // When restoring, draw the old content scaled to the new canvas size
+                        // This might involve clearing the canvas first if background isn't redrawn
+                        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Clear if needed
+                        this.ctx.drawImage(tempCanvas, 0, 0, this.canvas.width, this.canvas.height);
                     } else {
-                        this.clearCanvas();
+                        // If not maintaining content, or if it's the initial setup, clear or fill
+                        this.clearCanvas(); // Or your preferred way to set initial background
                     }
 
-                    // Reset context properties after resize
-                    this.setupContext();
+                    this.setupContext(); // Re-apply context settings
                 },
 
                 clearCanvas() {
