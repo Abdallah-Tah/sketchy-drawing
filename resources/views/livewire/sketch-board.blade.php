@@ -144,7 +144,7 @@
         @endif
 
         <!-- Full Page Canvas Container -->
-        <div id="canvasContainer" class="fixed inset-0 bg-white" :class="{ 'z-10': isFullScreen }">
+        <div id="canvasContainer" class="fixed inset-0 bg-white h-screen" :class="{ 'z-10': isFullScreen }">
             <canvas x-ref="canvas" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing"
                 @mouseleave="stopDrawing" @touchstart.prevent="startDrawing($event)"
                 @touchmove.prevent="draw($event)" @touchend.prevent="stopDrawing" @touchcancel.prevent="stopDrawing"
@@ -306,9 +306,9 @@
 
                 setCanvasSize(maintainContent = false) {
                     const container = this.canvas.parentElement;
-                    const toolbarHeight = window.innerWidth < 640 ? 110 : 132;
+                    const toolbarHeight = window.innerWidth < 640 ? 110 : 132; // This line is no longer directly used for height calculation but might be useful for other logic if the toolbar's height is needed.
                     let containerWidth = container.clientWidth;
-                    let containerHeight = window.innerHeight - toolbarHeight;
+                    let containerHeight = container.clientHeight; // Changed to use the container's clientHeight
 
                     let tempCanvas;
                     if (maintainContent) {
