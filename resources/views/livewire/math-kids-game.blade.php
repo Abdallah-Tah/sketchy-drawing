@@ -20,10 +20,10 @@
                 confettiPiece.classList.add(colors[Math.floor(Math.random() * colors.length)]);
                 
                 confettiPiece.style.left = Math.random() * 100 + '%';
-                confettiPiece.style.top = (Math.random() * 30 - 20) + 'px'; // Start slightly above or at the top
+                // Start confetti near the top edge, some slightly above to fall in.
+                // Use percentage for the 'top' to be relative to container height.
+                confettiPiece.style.top = (Math.random() * 10 - 15) + '%'; // e.g., from -15% to -5% of container height
                 confettiPiece.style.animationDelay = Math.random() * 1.5 + 's'; // Stagger start times more
-                // Add random rotation to the keyframes or apply initial random rotation if not in keyframes
-                // The keyframes for 'fall' already include rotation, so this is fine.
                 container.appendChild(confettiPiece);
             }
 
@@ -214,14 +214,19 @@
 
         @keyframes fall {
             0% {
-                transform: translateY(-50px) rotate(0deg); /* Start above the container */
+                /* Start from the JS-set 'top' position, ensure initial opacity is 0 */
+                transform: translateY(0px) rotate(0deg); 
                 opacity: 0;
             }
             10% {
-                opacity: 1;
+                /* Become visible quickly */
+                opacity: 1; 
             }
             100% {
-                transform: translateY(calc(100% + 50px)) rotate(720deg); /* Fall to just below the container */
+                /* Fall to well below the container height, ensuring it goes off-screen */
+                /* The container height is 100%, so 100vh or similar might be too much if card is small */
+                /* Let's use a large pixel value relative to its start to ensure it falls 'through' the card */
+                transform: translateY(600px) rotate(720deg); /* Adjusted to a fixed large pixel fall distance */
                 opacity: 0;
             }
         }
