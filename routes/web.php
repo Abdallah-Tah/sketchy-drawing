@@ -22,4 +22,8 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/sketch', SketchBoard::class)->name('sketch');
 
+Route::get('/math-kids', \App\Livewire\MathKidsGame::class)
+    ->middleware(['auth', 'verified'])
+    ->name('math-kids');
+
 require __DIR__ . '/auth.php';
