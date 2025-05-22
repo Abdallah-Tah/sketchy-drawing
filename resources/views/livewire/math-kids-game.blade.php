@@ -1,31 +1,30 @@
 <div x-data="{
         alpineScore: @entangle('score'),
         alpineProblemString: @entangle('problemString'),
-        triggerStarAnimation() {
-            const container = this.$refs.starsContainer;
+        triggerConfettiAnimation() {
+            const container = this.$refs.confettiContainer;
             if (!container) return;
 
             container.style.display = 'block';
-            const numberOfStars = 15; // Increased for more sparkle
+            const numberOfConfetti = 50;
+            const colors = ['red', 'blue', 'green', 'yellow', 'pink', 'purple', 'orange', 'cyan'];
 
-            // Clear previous stars if any (though timeout should handle it)
+            // Clear previous confetti
             while (container.firstChild) {
                 container.removeChild(container.firstChild);
             }
 
-            for (let i = 0; i < numberOfStars; i++) {
-                const star = document.createElement('div');
-                star.classList.add('star');
-                // Randomize position within the container
-                star.style.left = Math.random() * 100 + '%';
-                star.style.top = Math.random() * 80 + '%'; // Allow some vertical spread too
-                // Randomize animation delay for staggered effect
-                star.style.animationDelay = Math.random() * 0.7 + 's';
-                // Randomize size slightly
-                const size = Math.random() * 6 + 4; // Stars between 4px and 10px
-                star.style.width = size + 'px';
-                star.style.height = size + 'px';
-                container.appendChild(star);
+            for (let i = 0; i < numberOfConfetti; i++) {
+                const confettiPiece = document.createElement('div');
+                confettiPiece.classList.add('confetti');
+                confettiPiece.classList.add(colors[Math.floor(Math.random() * colors.length)]);
+                
+                confettiPiece.style.left = Math.random() * 100 + '%';
+                confettiPiece.style.top = (Math.random() * 30 - 20) + 'px'; // Start slightly above or at the top
+                confettiPiece.style.animationDelay = Math.random() * 1.5 + 's'; // Stagger start times more
+                // Add random rotation to the keyframes or apply initial random rotation if not in keyframes
+                // The keyframes for 'fall' already include rotation, so this is fine.
+                container.appendChild(confettiPiece);
             }
 
             setTimeout(() => {
@@ -33,7 +32,7 @@
                 while (container.firstChild) {
                     container.removeChild(container.firstChild);
                 }
-            }, 2000); // Increased to allow longer animation/delays (1s animation + up to 0.7s delay + buffer)
+            }, 4500); // Animation duration (3s) + max delay (1.5s) + buffer
         },
         init() {
             this.$watch('alpineScore', (newValue, oldValue) => {
@@ -45,7 +44,7 @@
                             scoreEl.classList.remove('score-updated');
                         }, 500); // Match CSS animation duration
                     }
-                    this.triggerStarAnimation(); // Call star animation on correct answer
+                    this.triggerConfettiAnimation(); // Call confetti animation
                 }
             });
 
@@ -67,8 +66,31 @@
     }"
     class="container mx-auto p-4 text-center bg-gradient-to-r from-blue-300 via-purple-400 to-pink-400 min-h-screen flex flex-col items-center justify-center selection:bg-purple-500 selection:text-white">
 
-    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-lg">
-        <h1 class="text-4xl sm:text-5xl font-bold text-purple-600 mb-8 tracking-tight">Math Whiz!</h1>
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-lg relative overflow-hidden"> {{-- Added relative and overflow-hidden --}}
+        <div x-ref="confettiContainer" class="confetti-container"></div>
+        <h1 class="text-4xl sm:text-5xl font-bold text-purple-600 mb-6 sm:mb-8 tracking-tight">Math Whiz!</h1>
+
+        <!-- Difficulty Selection -->
+        <div class="mb-6 sm:mb-8">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-700 mb-2 sm:mb-3">Select Level:</h3>
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                <button wire:click="setDifficulty('kindergarten')" 
+                        class="p-2 sm:p-3 text-sm sm:text-lg rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-4
+                               {{ $difficulty === 'kindergarten' ? 'bg-pink-500 text-white ring-pink-300' : 'bg-pink-200 hover:bg-pink-300 text-pink-800 ring-pink-200 hover:ring-pink-300' }}">
+                    K
+                </button>
+                <button wire:click="setDifficulty('1st_grade')" 
+                        class="p-2 sm:p-3 text-sm sm:text-lg rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-4
+                               {{ $difficulty === '1st_grade' ? 'bg-indigo-500 text-white ring-indigo-300' : 'bg-indigo-200 hover:bg-indigo-300 text-indigo-800 ring-indigo-200 hover:ring-indigo-300' }}">
+                    1st
+                </button>
+                <button wire:click="setDifficulty('2nd_grade')" 
+                        class="p-2 sm:p-3 text-sm sm:text-lg rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-4
+                               {{ $difficulty === '2nd_grade' ? 'bg-teal-500 text-white ring-teal-300' : 'bg-teal-200 hover:bg-teal-300 text-teal-800 ring-teal-200 hover:ring-teal-300' }}">
+                    2nd
+                </button>
+            </div>
+        </div>
 
         <!-- Operation Selection -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
@@ -122,9 +144,8 @@
             Check Answer
         </button>
 
-        <!-- Message Feedback & Stars -->
-        <div class="min-h-[60px] flex items-center justify-center relative"> {{-- Added position:relative for star container --}}
-            <div x-ref="starsContainer" class="star-container"></div>
+        <!-- Message Feedback -->
+        <div class="min-h-[60px] flex items-center justify-center relative">
             @if ($message)
                 <div wire:key="{{ rand() }}" class="p-3 sm:p-4 text-lg sm:text-xl font-semibold rounded-lg shadow-md w-full animate-pop-in
                     {{ str_contains(strtolower($message), 'correct') ? 'bg-green-100 text-green-700' : (str_contains(strtolower($message), 'please') ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
@@ -162,48 +183,47 @@
             animation: pulseInput 0.7s ease-in-out;
         }
 
-        /* Star Animation Styles */
-        .star-container {
-            position: absolute; /* Positioned within the relative feedback container */
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 150px; /* Increased size for more spread */
-            height: 80px; /* Increased size */
-            pointer-events: none; /* So it doesn't interfere with clicks on message */
-            display: none; /* Hidden by default */
-            z-index: 10; /* Above the message potentially */
-        }
-
-        .star {
+        /* Confetti Animation Styles */
+        .confetti-container {
             position: absolute;
-            /* width: 8px; height: 8px; /* Base size, will be randomized by JS */
-            background-color: gold;
-            border-radius: 50%;
-            opacity: 0;
-            animation: sparkle 1s ease-out forwards;
-            /* box-shadow: 0 0 5px gold, 0 0 10px gold; /* Optional extra glow */
-        }
-        /* Add a more star-like shape using pseudo-elements */
-        .star::before, .star::after {
-            content: '';
-            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            background-color: gold;
-            border-radius: 50%;
-            /* box-shadow: 0 0 5px gold, 0 0 10px gold; */
+            pointer-events: none;
+            display: none;
+            z-index: 100; /* Ensure confetti is on top */
         }
-        .star::before {
-            transform: rotate(45deg);
+
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 12px;
+            opacity: 0;
+            animation: fall 3s linear forwards;
         }
-        /* .star::after { transform: rotate(-45deg); } /* Could add more points, but simple circles are fine too */
 
+        .confetti.red { background-color: #E57373; }
+        .confetti.blue { background-color: #64B5F6; }
+        .confetti.green { background-color: #81C784; }
+        .confetti.yellow { background-color: #FFF176; }
+        .confetti.pink { background-color: #F06292; }
+        .confetti.purple { background-color: #BA68C8; }
+        .confetti.orange { background-color: #FFB74D; }
+        .confetti.cyan { background-color: #4DD0E1; }
 
-        @keyframes sparkle {
-            0% { transform: translateY(10px) scale(0.3); opacity: 0.5; }
-            25% { transform: scale(1.1); opacity: 1; } /* Brighter, bigger quickly */
-            100% { transform: translateY(-30px) scale(0.5); opacity: 0; } /* Float up further and fade */
+        @keyframes fall {
+            0% {
+                transform: translateY(-50px) rotate(0deg); /* Start above the container */
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(calc(100% + 50px)) rotate(720deg); /* Fall to just below the container */
+                opacity: 0;
+            }
         }
     </style>
 </div>
