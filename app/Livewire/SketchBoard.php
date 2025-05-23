@@ -26,6 +26,6 @@ class SketchBoard extends Component
 
     public function render()
     {
-        return view('livewire.sketch-board');
+        return view('livewire.sketch-board')->layout('components.layouts.app');
     }
 }
